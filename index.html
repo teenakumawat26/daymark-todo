@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nova Calculator</title>
+    <meta name="description" content="A premium, futuristic calculator experience." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="background-glow glow-one"></div>
+    <div class="background-glow glow-two"></div>
+
+    <div class="intro-overlay" id="introOverlay">
+      <div class="intro-card">
+        <div class="intro-logo">⌘</div>
+        <h1>Nova Calculator</h1>
+        <p>Fluid, premium, and ready to compute.</p>
+      </div>
+    </div>
+
+    <div class="app-shell">
+      <aside class="history-panel" id="historyPanel">
+        <div class="history-header">
+          <div>
+            <p class="eyebrow">Timeline</p>
+            <h2>Calculation history</h2>
+          </div>
+          <button class="icon-button" id="closeHistory" aria-label="Close history">✕</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </aside>
+
+      <main class="calculator-card">
+        <header class="topbar">
+          <div class="brand-block">
+            <div class="brand-mark">∑</div>
+            <div>
+              <p class="eyebrow">Precision Studio</p>
+              <h1>Nova</h1>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" id="soundToggle" aria-label="Audio feedback">🔊</button>
+            <button class="icon-button" id="historyToggle" aria-label="Open history">🕘</button>
+            <button class="icon-button" id="themeToggle" aria-label="Toggle theme">☀️</button>
+          </div>
+        </header>
+
+        <section class="display-area">
+          <div class="display-expression" id="expression">0</div>
+          <div class="display-result" id="result" tabindex="0" role="button" aria-label="Copy result">
+            0
+          </div>
+        </section>
+
+        <section class="mode-switcher" aria-label="Mode switcher">
+          <button class="mode-pill active" data-mode="basic">Basic</button>
+          <button class="mode-pill" data-mode="scientific">Scientific</button>
+        </section>
+
+        <section class="keypad-shell">
+          <div class="scientific-row" id="scientificRow">
+            <button class="key key-scientific" data-value="sin(">sin</button>
+            <button class="key key-scientific" data-value="cos(">cos</button>
+            <button class="key key-scientific" data-value="tan(">tan</button>
+            <button class="key key-scientific" data-value="log(">log</button>
+            <button class="key key-scientific" data-value="ln(">ln</button>
+            <button class="key key-scientific" data-value="sqrt(">√</button>
+            <button class="key key-scientific" data-value="^">xʸ</button>
+            <button class="key key-scientific" data-value="!">x!</button>
+            <button class="key key-scientific" data-value="%">%</button>
+            <button class="key key-scientific" data-value="(">(</button>
+            <button class="key key-scientific" data-value=")">)</button>
+          </div>
+
+          <div class="button-grid">
+            <button class="key key-action" data-action="memory-clear">MC</button>
+            <button class="key key-action" data-action="memory-recall">MR</button>
+            <button class="key key-action" data-action="memory-add">M+</button>
+            <button class="key key-action" data-action="memory-subtract">M−</button>
+
+            <button class="key key-action" data-action="all-clear">AC</button>
+            <button class="key key-action" data-action="clear">C</button>
+            <button class="key key-operator" data-value="/">÷</button>
+            <button class="key key-operator" data-value="*">×</button>
+
+            <button class="key" data-value="7">7</button>
+            <button class="key" data-value="8">8</button>
+            <button class="key" data-value="9">9</button>
+            <button class="key key-operator" data-value="-">−</button>
+
+            <button class="key" data-value="4">4</button>
+            <button class="key" data-value="5">5</button>
+            <button class="key" data-value="6">6</button>
+            <button class="key key-operator" data-value="+">+</button>
+
+            <button class="key" data-value="1">1</button>
+            <button class="key" data-value="2">2</button>
+            <button class="key" data-value="3">3</button>
+            <button class="key key-equals" data-action="equals">=</button>
+
+            <button class="key" data-value="0">0</button>
+            <button class="key" data-value=".">.</button>
+            <button class="key key-action" data-action="negate">±</button>
+            <button class="key key-action" data-action="toggle-history">☰</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
