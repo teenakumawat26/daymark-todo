@@ -1,120 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nova Calculator</title>
-    <meta name="description" content="A premium, futuristic calculator experience." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="background-glow glow-one"></div>
-    <div class="background-glow glow-two"></div>
 
-    <div class="intro-overlay" id="introOverlay">
-      <div class="intro-card">
-        <div class="intro-logo">⌘</div>
-        <h1>Nova Calculator</h1>
-        <p>Fluid, premium, and ready to compute.</p>
-      </div>
-    </div>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f2f5ef">
+  <title>Daymark | To-do list</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
 
-    <div class="app-shell">
-      <aside class="history-panel" id="historyPanel">
-        <div class="history-header">
-          <div>
-            <p class="eyebrow">Timeline</p>
-            <h2>Calculation history</h2>
-          </div>
-          <button class="icon-button" id="closeHistory" aria-label="Close history">✕</button>
+<body>
+  <main class="app-shell">
+    <header class="page-header">
+      <a class="wordmark" href="#main" aria-label="Today">Today<span style="color:#888">_</span></a>
+      <p class="header-note">Aaj ka kaam aaj hi.</p>
+      <div class="star-badge">⭐ <span id="starCount">0</span> 🔥 <span id="streakCount">0</span></div>
+    </header>
+
+    <section class="todo-panel" id="main" aria-labelledby="page-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">LET'S START</p>
+          <h1 id="page-title">What's the <br>actual plan today?</h1>
         </div>
-        <div class="history-list" id="historyList"></div>
-      </aside>
+        <div class="date-mark" aria-label="Today's date">
+          <span class="date-day" id="date-day"></span>
+          <span class="date-month" id="date-month"></span>
+        </div>
+      </div>
 
-      <main class="calculator-card">
-        <header class="topbar">
-          <div class="brand-block">
-            <div class="brand-mark">∑</div>
-            <div>
-              <p class="eyebrow">Precision Studio</p>
-              <h1>Nova</h1>
-            </div>
-          </div>
-          <div class="topbar-actions">
-            <button class="icon-button" id="soundToggle" aria-label="Audio feedback">🔊</button>
-            <button class="icon-button" id="historyToggle" aria-label="Open history">🕘</button>
-            <button class="icon-button" id="themeToggle" aria-label="Toggle theme">☀️</button>
-          </div>
-        </header>
+      <form class="add-form" id="add-form">
+        <label class="visually-hidden" for="task-input">Add a task</label>
+        <input id="task-input" name="task" type="text" maxlength="200" placeholder="What needs to get done?"
+          autocomplete="off" required>
+        <button class="add-button" type="submit"><span aria-hidden="true">+</span> Add task</button>
+      </form>
 
-        <section class="display-area">
-          <div class="display-expression" id="expression">0</div>
-          <div class="display-result" id="result" tabindex="0" role="button" aria-label="Copy result">
-            0
-          </div>
-        </section>
+      <div class="list-toolbar">
+        <div class="task-total" aria-live="polite"><strong id="task-count">0</strong> <span
+            id="task-count-label">tasks</span></div>
+        <div class="filters" role="group" aria-label="Filter tasks">
+          <button class="filter-button is-selected" type="button" data-filter="all" aria-pressed="true">All</button>
+          <button class="filter-button" type="button" data-filter="active" aria-pressed="false">Active</button>
+          <button class="filter-button" type="button" data-filter="completed" aria-pressed="false">Completed</button>
+        </div>
+      </div>
 
-        <section class="mode-switcher" aria-label="Mode switcher">
-          <button class="mode-pill active" data-mode="basic">Basic</button>
-          <button class="mode-pill" data-mode="scientific">Scientific</button>
-        </section>
+      <ul class="task-list" id="task-list" aria-label="Your tasks"></ul>
+      <div class="empty-state" id="empty-state" aria-live="polite">
+        <span class="empty-icon" aria-hidden="true">✳</span>
+        <p class="empty-title">List is empty.Good - let's fill it.</p>
+        <p class="empty-copy">Add one think above to start.</p>
 
-        <section class="keypad-shell">
-          <div class="scientific-row" id="scientificRow">
-            <button class="key key-scientific" data-value="sin(">sin</button>
-            <button class="key key-scientific" data-value="cos(">cos</button>
-            <button class="key key-scientific" data-value="tan(">tan</button>
-            <button class="key key-scientific" data-value="log(">log</button>
-            <button class="key key-scientific" data-value="ln(">ln</button>
-            <button class="key key-scientific" data-value="sqrt(">√</button>
-            <button class="key key-scientific" data-value="^">xʸ</button>
-            <button class="key key-scientific" data-value="!">x!</button>
-            <button class="key key-scientific" data-value="%">%</button>
-            <button class="key key-scientific" data-value="(">(</button>
-            <button class="key key-scientific" data-value=")">)</button>
-          </div>
+      </div>
 
-          <div class="button-grid">
-            <button class="key key-action" data-action="memory-clear">MC</button>
-            <button class="key key-action" data-action="memory-recall">MR</button>
-            <button class="key key-action" data-action="memory-add">M+</button>
-            <button class="key key-action" data-action="memory-subtract">M−</button>
+      <footer class="list-footer">
+        <p id="remaining-count">'Nothing here yet — good place to start.'</p>
+        <button class="clear-button" id="clear-completed" type="button" disabled>Clear completed</button>
+      </footer>
+      <p class="status-message visually-hidden" id="status-message" role="status" aria-live="polite"></p>
+    </section>
 
-            <button class="key key-action" data-action="all-clear">AC</button>
-            <button class="key key-action" data-action="clear">C</button>
-            <button class="key key-operator" data-value="/">÷</button>
-            <button class="key key-operator" data-value="*">×</button>
-
-            <button class="key" data-value="7">7</button>
-            <button class="key" data-value="8">8</button>
-            <button class="key" data-value="9">9</button>
-            <button class="key key-operator" data-value="-">−</button>
-
-            <button class="key" data-value="4">4</button>
-            <button class="key" data-value="5">5</button>
-            <button class="key" data-value="6">6</button>
-            <button class="key key-operator" data-value="+">+</button>
-
-            <button class="key" data-value="1">1</button>
-            <button class="key" data-value="2">2</button>
-            <button class="key" data-value="3">3</button>
-            <button class="key key-equals" data-action="equals">=</button>
-
-            <button class="key" data-value="0">0</button>
-            <button class="key" data-value=".">.</button>
-            <button class="key key-action" data-action="negate">±</button>
-            <button class="key key-action" data-action="toggle-history">☰</button>
-          </div>
-        </section>
-      </main>
+    <p class="page-footer">One thing at a time. You're doing fine.</p>
+  </main>
+  <div id="shabash-popup">
+    <div class="shabash-card">
+      <p class="shabash-top">all done</p>
+      <h2>Shabash!</h2>
+      <p>bas, itna hi karna tha.</p>
+      <button id="close-popup">ho gaya</button>
     </div>
+  </div>
 
-    <script src="script.js"></script>
-  </body>
+
+
+</body>
+
 </html>

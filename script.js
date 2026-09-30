@@ -1,434 +1,111 @@
-const expressionEl = document.getElementById('expression');
-const resultEl = document.getElementById('result');
-const historyPanel = document.getElementById('historyPanel');
-const historyList = document.getElementById('historyList');
-const historyToggle = document.getElementById('historyToggle');
-const closeHistory = document.getElementById('closeHistory');
-const themeToggle = document.getElementById('themeToggle');
-const soundToggle = document.getElementById('soundToggle');
-const introOverlay = document.getElementById('introOverlay');
-const modePills = document.querySelectorAll('.mode-pill');
-const buttons = document.querySelectorAll('.key');
+const STORAGE_KEY = 'daymark-tasks-v1';
+const addForm = document.querySelector('#add-form');
+const taskInput = document.querySelector('#task-input');
+const taskList = document.querySelector('#task-list');
+const emptyState = document.querySelector('#empty-state');
+const taskCount = document.querySelector('#task-count');
+const taskCountLabel = document.querySelector('#task-count-label');
+const remainingCount = document.querySelector('#remaining-count');
+const clearCompletedButton = document.querySelector('#clear-completed');
+const statusMessage = document.querySelector('#status-message');
+const filters = document.querySelector('.filters');
 
-const state = {
-  expression: '',
-  lastResult: '0',
-  history: [],
-  memory: 0,
-  scientificMode: false,
-  theme: 'dark',
-  soundEnabled: true,
-  historyOpen: false,
-  error: false,
-};
+let totalStars = parseInt(localStorage.getItem('stars') || '0');
+let streak = parseInt(localStorage.getItem('streak') || '0');
+let lastCompletedDate = localStorage.getItem('lastCompletedDate') || null;
+let tasks = loadTasks();
+let activeFilter = 'all';
+let draggedTaskId = null;
 
-function init() {
-  bindEvents();
-  renderHistory();
-  setTheme(state.theme);
-  setTimeout(() => {
-    introOverlay.classList.add('hidden');
-  }, 900);
-  updateDisplay();
-}
-
-function bindEvents() {
-  buttons.forEach((button) => {
-    button.addEventListener('click', () => handleButtonPress(button));
-  });
-
-  modePills.forEach((pill) => {
-    pill.addEventListener('click', () => toggleScientificMode(pill.dataset.mode));
-  });
-
-  historyToggle.addEventListener('click', () => toggleHistory(true));
-  closeHistory.addEventListener('click', () => toggleHistory(false));
-  themeToggle.addEventListener('click', toggleTheme);
-  soundToggle.addEventListener('click', toggleSound);
-  resultEl.addEventListener('click', copyResult);
-  document.addEventListener('keydown', handleKeyboardInput);
-}
-
-function handleButtonPress(button) {
-  playFeedback();
-  createRipple(button);
-  button.classList.add('pressed');
-  setTimeout(() => button.classList.remove('pressed'), 160);
-
-  const action = button.dataset.action;
-  const value = button.dataset.value;
-
-  if (action) {
-    runAction(action);
-    return;
-  }
-
-  if (value !== undefined) {
-    appendValue(value);
-  }
-}
-
-function runAction(action) {
-  switch (action) {
-    case 'clear':
-      clearEntry();
-      break;
-    case 'all-clear':
-      resetCalculator();
-      break;
-    case 'negate':
-      negateCurrent();
-      break;
-    case 'equals':
-      evaluate();
-      break;
-    case 'toggle-history':
-      toggleHistory(!state.historyOpen);
-      break;
-    case 'memory-add':
-      memoryAdd();
-      break;
-    case 'memory-subtract':
-      memorySubtract();
-      break;
-    case 'memory-recall':
-      memoryRecall();
-      break;
-    case 'memory-clear':
-      memoryClear();
-      break;
-    default:
-      break;
-  }
-}
-
-function appendValue(value) {
-  if (state.error) {
-    state.expression = '';
-    state.error = false;
-  }
-
-  if (value === '.' && state.expression.endsWith('.')) {
-    return;
-  }
-
-  if (value === '.' && state.expression === '') {
-    state.expression = '0.';
-    updateDisplay();
-    return;
-  }
-
-  if (state.expression === '0' && !['.', '+', '-', '*', '/', '^', '(', ')', '%'].includes(value)) {
-    state.expression = value;
-    updateDisplay();
-    return;
-  }
-
-  if (state.expression === '' && ['+', '-', '*', '/', '^', '%'].includes(value)) {
-    state.expression = '0';
-  }
-
-  state.expression += value;
-  updateDisplay();
-}
-
-function clearEntry() {
-  if (state.error) {
-    resetCalculator();
-    return;
-  }
-
-  state.expression = state.expression.slice(0, -1);
-  if (state.expression === '') {
-    state.expression = '0';
-  }
-  updateDisplay();
-}
-
-function resetCalculator() {
-  state.expression = '';
-  state.lastResult = '0';
-  state.error = false;
-  updateDisplay();
-}
-
-function negateCurrent() {
-  if (!state.expression || state.expression === '0') {
-    state.expression = '-';
-  } else if (state.expression.startsWith('-')) {
-    state.expression = state.expression.slice(1);
-  } else {
-    state.expression = `-${state.expression}`;
-  }
-  updateDisplay();
-}
-
-function evaluate() {
-  if (!state.expression || state.expression === '0') {
-    return;
-  }
-
-  const expr = state.expression.replace(/×/g, '*').replace(/÷/g, '/');
-
+function loadTasks() {
   try {
-    const result = safeEvaluate(expr);
-    if (!Number.isFinite(result)) {
-      throw new Error('Invalid expression');
-    }
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    if (!Array.isArray(s)) return [];
+    return s.filter(t => t && typeof t.id === 'string').map(t => ({ id: t.id, text: t.text, completed: !!t.completed, createdAt: t.createdAt || Date.now() }));
+  } catch { return []; }
+}
+function saveTasks() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); } catch { } }
+function makeId() { return crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`; }
+function announce(m) { statusMessage.textContent = ''; setTimeout(() => statusMessage.textContent = m, 20); }
+function formatCreatedAt(ts) { return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(ts)); }
+function createButton(label, className, action, text) { const b = document.createElement('button'); b.type = 'button'; b.className = className; b.dataset.action = action; b.title = label; b.textContent = text; return b; }
+function createTaskElement(task, index, visibleTasks) {
+  const item = document.createElement('li'); item.className = `task-item${task.completed ? ' is-completed' : ''}`; item.dataset.id = task.id; item.draggable = true;
+  const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'task-checkbox'; cb.checked = task.completed; cb.dataset.action = 'toggle';
+  const content = document.createElement('div'); content.className = 'task-content';
+  const txt = document.createElement('span'); txt.className = 'task-text'; txt.textContent = task.text;
+  const meta = document.createElement('time'); meta.className = 'task-meta'; meta.textContent = `Added ${formatCreatedAt(task.createdAt)}`;
+  content.append(txt, meta);
+  const actions = document.createElement('div'); actions.className = 'task-actions';
+  const up = createButton('Move up', 'icon-button', 'move-up', '↑'); const down = createButton('Move down', 'icon-button', 'move-down', '↓');
+  up.disabled = index === 0; down.disabled = index === visibleTasks.length - 1;
+  actions.append(up, down, createButton('Edit', 'icon-button', 'edit', '✎'), createButton('Delete', 'icon-button delete-button', 'delete', '×'));
+  item.append(cb, content, actions); return item;
+}
+function getVisibleTasks() { if (activeFilter === 'active') return tasks.filter(t => !t.completed); if (activeFilter === 'completed') return tasks.filter(t => t.completed); return tasks; }
+function updateStarDisplay() { const el = document.getElementById('starCount'); if (el) el.textContent = totalStars; }
+function updateStreakDisplay() { const el = document.getElementById('streakCount'); if (el) el.textContent = streak; }
+function handleStreakOnComplete() {
+  const today = new Date().toDateString(); const yesterday = new Date(Date.now() - 86400000).toDateString();
+  if (lastCompletedDate === today) return; if (lastCompletedDate === yesterday) streak += 1; else streak = 1;
+  lastCompletedDate = today; localStorage.setItem('streak', streak); localStorage.setItem('lastCompletedDate', lastCompletedDate); updateStreakDisplay();
+}
+let shabashTimer = null;
 
-    state.lastResult = formatNumber(result);
-    state.expression = state.lastResult;
-    state.error = false;
-    state.history.unshift({
-      expression: expr,
-      result: state.lastResult,
-    });
-    state.history = state.history.slice(0, 12);
-    renderHistory();
-    animateValue(resultEl, result);
-    updateDisplay();
-  } catch (error) {
-    state.error = true;
-    state.expression = 'Error';
-    state.lastResult = 'Error';
-    triggerErrorAnimation();
-    updateDisplay();
+function showShabashPopup() {
+  const popup = document.getElementById('shabash-popup');
+  if (!popup) return;
+  popup.classList.add('show');
+  clearTimeout(shabashTimer);
+  shabashTimer = setTimeout(() => {
+    hideShabashPopup();
+  }, 1000);
+}
+
+function hideShabashPopup() {
+  document.getElementById('shabash-popup')?.classList.remove('show');
+  clearTimeout(shabashTimer);
+}
+function checkAllDone() {
+  const allDone = tasks.length > 0 && tasks.every(t => t.completed === true);
+  if (allDone) {
+    showShabashPopup();
+  } else {
+    hideShabashPopup();
   }
 }
 
-function safeEvaluate(expr) {
-  const normalized = expr
-    .replace(/sqrt\(/g, 'sqrt(')
-    .replace(/sin\(/g, 'sin(')
-    .replace(/cos\(/g, 'cos(')
-    .replace(/tan\(/g, 'tan(')
-    .replace(/log\(/g, 'log(')
-    .replace(/ln\(/g, 'ln(')
-    .replace(/\^/g, '**')
-    .replace(/%/g, '*0.01');
-
-  const sanitized = normalized
-    .replace(/\babs\b/g, 'Math.abs')
-    .replace(/\bsin\b/g, 'Math.sin')
-    .replace(/\bcos\b/g, 'Math.cos')
-    .replace(/\btan\b/g, 'Math.tan')
-    .replace(/\blog\b/g, 'Math.log10')
-    .replace(/\bln\b/g, 'Math.log')
-    .replace(/\bsqrt\b/g, 'Math.sqrt')
-    .replace(/\bpi\b/gi, 'Math.PI');
-
-  const prepared = transformFactorials(sanitized);
-  return Function(`'use strict'; return (${prepared})`)();
+function render() {
+  if (tasks.length === 0) { totalStars = 0; localStorage.setItem('stars', '0'); }
+  updateStarDisplay(); updateStreakDisplay();
+  const visibleTasks = getVisibleTasks();
+  const completedCount = tasks.filter(t => t.completed).length;
+  const activeCount = tasks.length - completedCount;
+  taskList.replaceChildren(...visibleTasks.map((t, i) => createTaskElement(t, i, visibleTasks)));
+  taskList.hidden = visibleTasks.length === 0; emptyState.hidden = visibleTasks.length > 0;
+  taskCount.textContent = tasks.length; taskCountLabel.textContent = tasks.length === 1 ? 'task' : 'tasks';
+  remainingCount.textContent = tasks.length === 0 ? "Nothing here yet — good place to start." : `${activeCount} ${activeCount === 1 ? 'task' : 'tasks'} left `;
+  clearCompletedButton.disabled = completedCount === 0;
+  filters.querySelectorAll('[data-filter]').forEach(b => { const sel = b.dataset.filter === activeFilter; b.classList.toggle('is-selected', sel); b.setAttribute('aria-pressed', String(sel)); });
+  checkAllDone();
 }
-
-function transformFactorials(expression) {
-  return expression.replace(/(\d+(?:\.\d+)?)!/g, (_, value) => `factorial(${value})`);
-}
-
-function factorial(n) {
-  const value = Number(n);
-  if (!Number.isInteger(value) || value < 0) {
-    throw new Error('Factorial only supports non-negative integers');
-  }
-  let result = 1;
-  for (let i = 2; i <= value; i += 1) {
-    result *= i;
-  }
-  return result;
-}
-
-function updateDisplay() {
-  expressionEl.textContent = state.expression || '0';
-  if (state.error) {
-    resultEl.textContent = 'Error';
-    return;
-  }
-  animateValue(resultEl, Number(state.lastResult || 0));
-}
-
-function animateValue(element, toValue) {
-  const startValue = Number(element.dataset.value || 0);
-  const startTime = performance.now();
-  const duration = 500;
-
-  const fromValue = Number.isFinite(startValue) ? startValue : 0;
-  const endValue = Number(toValue);
-
-  const tick = (now) => {
-    const progress = Math.min((now - startTime) / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const current = fromValue + (endValue - fromValue) * eased;
-    element.textContent = formatNumber(current);
-    element.dataset.value = current;
-
-    if (progress < 1) {
-      requestAnimationFrame(tick);
-    } else {
-      element.textContent = formatNumber(endValue);
-      element.dataset.value = endValue;
-    }
-  };
-
-  requestAnimationFrame(tick);
-}
-
-function formatNumber(value) {
-  if (!Number.isFinite(value)) {
-    return 'Error';
-  }
-  const rounded = Number(value.toFixed(10));
-  return String(rounded);
-}
-
-function triggerErrorAnimation() {
-  resultEl.classList.remove('error-shake');
-  void resultEl.offsetWidth;
-  resultEl.classList.add('error-shake');
-  setTimeout(() => resultEl.classList.remove('error-shake'), 600);
-}
-
-function toggleScientificMode(mode) {
-  state.scientificMode = mode === 'scientific';
-  document.body.classList.toggle('scientific-active', state.scientificMode);
-  modePills.forEach((pill) => pill.classList.toggle('active', pill.dataset.mode === mode));
-}
-
-function toggleTheme() {
-  state.theme = state.theme === 'dark' ? 'light' : 'dark';
-  setTheme(state.theme);
-}
-
-function setTheme(theme) {
-  document.body.classList.toggle('light', theme === 'light');
-  themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-}
-
-function toggleSound() {
-  state.soundEnabled = !state.soundEnabled;
-  soundToggle.textContent = state.soundEnabled ? '🔊' : '🔈';
-}
-
-function playFeedback() {
-  if (!state.soundEnabled) {
-    return;
-  }
-
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) {
-    return;
-  }
-
-  const context = new AudioContext();
-  const oscillator = context.createOscillator();
-  const gainNode = context.createGain();
-  oscillator.type = 'sine';
-  oscillator.frequency.value = 780;
-  gainNode.gain.value = 0.015;
-  oscillator.connect(gainNode);
-  gainNode.connect(context.destination);
-  oscillator.start();
-  gainNode.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.14);
-  oscillator.stop(context.currentTime + 0.14);
-  context.close();
-}
-
-function toggleHistory(force) {
-  state.historyOpen = force ?? !state.historyOpen;
-  historyPanel.classList.toggle('open', state.historyOpen);
-}
-
-function renderHistory() {
-  if (!state.history.length) {
-    historyList.innerHTML = '<div class="history-item"><span class="expr">Your calculations will appear here.</span><span class="result">Ready</span></div>';
-    return;
-  }
-
-  historyList.innerHTML = state.history
-    .map(
-      (item) => `
-        <div class="history-item">
-          <span class="expr">${item.expression}</span>
-          <span class="result">${item.result}</span>
-        </div>
-      `
-    )
-    .join('');
-}
-
-function memoryAdd() {
-  const value = Number(state.lastResult || 0);
-  state.memory += value;
-  state.expression = `M+ ${formatNumber(state.memory)}`;
-  updateDisplay();
-}
-
-function memorySubtract() {
-  const value = Number(state.lastResult || 0);
-  state.memory -= value;
-  state.expression = `M- ${formatNumber(state.memory)}`;
-  updateDisplay();
-}
-
-function memoryRecall() {
-  state.expression = String(formatNumber(state.memory));
-  state.lastResult = String(formatNumber(state.memory));
-  updateDisplay();
-}
-
-function memoryClear() {
-  state.memory = 0;
-  state.expression = 'MC';
-  updateDisplay();
-}
-
-function copyResult() {
-  navigator.clipboard.writeText(state.lastResult).catch(() => {});
-  resultEl.textContent = 'Copied';
-  setTimeout(() => {
-    resultEl.textContent = state.lastResult;
-  }, 650);
-}
-
-function handleKeyboardInput(event) {
-  const { key } = event;
-  const allowed = /[0-9+\-*/.^()%]/;
-
-  if (key === 'Enter') {
-    event.preventDefault();
-    evaluate();
-    return;
-  }
-
-  if (key === 'Backspace') {
-    event.preventDefault();
-    clearEntry();
-    return;
-  }
-
-  if (key === 'Escape') {
-    event.preventDefault();
-    resetCalculator();
-    return;
-  }
-
-  if (allowed.test(key)) {
-    event.preventDefault();
-    appendValue(key);
-    return;
-  }
-}
-
-function createRipple(button) {
-  const ripple = document.createElement('span');
-  ripple.className = 'ripple';
-  const rect = button.getBoundingClientRect();
-  const size = Math.max(rect.width, rect.height) * 1.2;
-  ripple.style.width = `${size}px`;
-  ripple.style.height = `${size}px`;
-  ripple.style.left = `${(button.clientWidth - size) / 2}px`;
-  ripple.style.top = `${(button.clientHeight - size) / 2}px`;
-  button.appendChild(ripple);
-  setTimeout(() => ripple.remove(), 600);
-}
-
-init();
+addForm.addEventListener('submit', e => { e.preventDefault(); const text = taskInput.value.trim(); if (!text) return; tasks.unshift({ id: makeId(), text, completed: false, createdAt: Date.now() }); saveTasks(); render(); taskInput.value = ''; taskInput.focus(); });
+filters.addEventListener('click', e => { const b = e.target.closest('[data-filter]'); if (!b) return; activeFilter = b.dataset.filter; render(); });
+taskList.addEventListener('change', e => {
+  const cb = e.target.closest('[data-action="toggle"]'); if (!cb) return;
+  const task = tasks.find(t => t.id === cb.closest('[data-id]').dataset.id); if (!task) return;
+  const was = task.completed; task.completed = cb.checked;
+  if (task.completed && !was) handleStreakOnComplete();
+  totalStars = tasks.filter(t => t.completed).length; localStorage.setItem('stars', totalStars); saveTasks(); render();
+});
+taskList.addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]'); if (!btn) return; const item = btn.closest('[data-id]'); const id = item.dataset.id;
+  if (btn.dataset.action === 'delete') { const td = tasks.find(t => t.id === id); if (td?.completed) { totalStars = Math.max(0, totalStars - 1); localStorage.setItem('stars', totalStars); } tasks = tasks.filter(t => t.id !== id); saveTasks(); render(); }
+  else if (btn.dataset.action === 'move-up') { const vi = getVisibleTasks().findIndex(t => t.id === id); const target = getVisibleTasks()[vi - 1]; if (!target) return; const ci = tasks.findIndex(t => t.id === id); const ti = tasks.findIndex(t => t.id === target.id);[tasks[ci], tasks[ti]] = [tasks[ti], tasks[ci]]; saveTasks(); render(); }
+  else if (btn.dataset.action === 'move-down') { const vi = getVisibleTasks().findIndex(t => t.id === id); const target = getVisibleTasks()[vi + 1]; if (!target) return; const ci = tasks.findIndex(t => t.id === id); const ti = tasks.findIndex(t => t.id === target.id);[tasks[ci], tasks[ti]] = [tasks[ti], tasks[ci]]; saveTasks(); render(); }
+});
+clearCompletedButton.addEventListener('click', () => { const rc = tasks.filter(t => t.completed).length; totalStars = Math.max(0, totalStars - rc); localStorage.setItem('stars', totalStars); tasks = tasks.filter(t => !t.completed); saveTasks(); render(); });
+document.getElementById('close-popup')?.addEventListener('click', hideShabashPopup);
+document.getElementById('shabash-popup')?.addEventListener('click', e => { if (e.target.id === 'shabash-popup') hideShabashPopup(); });
+const today = new Date(); document.querySelector('#date-day').textContent = new Intl.DateTimeFormat(undefined, { day: '2-digit' }).format(today); document.querySelector('#date-month').textContent = new Intl.DateTimeFormat(undefined, { month: 'short' }).format(today);
+render();
